@@ -3,7 +3,8 @@
 /------------------------------------------------------------------------------
 / - Uses 2048 mV external reference connected to the A0 pin
 / - Reads the ADC in "blocking" fashion. 
-/ - Uses single ended & signed conversion mode. Resolution is 11 bits.
+/ - Uses single ended & signed conversion mode. 
+/ - Resolution is 11 bits since we are using only 0 - 2048 mV range.
 / - Each LSB corresponds to 1mV.
 / - No calibration routines are implemented for the sake of simplicity.
 /------------------------------------------------------------------------------
