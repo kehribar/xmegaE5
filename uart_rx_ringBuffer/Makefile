@@ -13,7 +13,9 @@ ASRC    =
 VPATH   = 
 DEVICE  = atxmega32e5
 F_OSC   = 32000000
-UPLOAD  = sudo avrdude -c avrispmkii -p x32e5 -U flash:w:./obj/main.hex
+FLASH   = sudo avrdude -c avrispmkii -p x32e5 -U flash:w:./obj/main.hex
+PORT 	= /dev/ttyUSB0
+UPLOAD  = tealoader -p $(PORT) -f ./obj/main.hex -i
 
 ## Use the Atmel's latest GCC toolchain, not the Crosspack or any other version.
 TOOLCHAIN_PATH = /home/parallels/avr8-gnu-toolchain-linux_x86/bin/
