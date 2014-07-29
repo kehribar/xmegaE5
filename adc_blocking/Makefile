@@ -171,6 +171,9 @@ clean:
 # Include the dependency files.
 -include $(shell mkdir $(OBJDIR) 2>/dev/null) $(wildcard $(OBJDIR)/*.d)
 
+flash:
+	$(FLASH)
+
 upload:
 	$(UPLOAD)
 
