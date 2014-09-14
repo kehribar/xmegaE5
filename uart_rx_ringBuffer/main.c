@@ -43,9 +43,9 @@ int main()
 	/* Set UART data reception interrupt priority */
 	USARTD0.CTRLA |= (1<<5);
 	USARTD0.CTRLA |= (1<<4);
-	
-	/* Enable all interrupt levels */
-	PMIC.CTRL = PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
+  
+   	/* Enable all interrupt levels */
+    PMIC.CTRL = PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
 	sei();
 
 	while(1)
