@@ -3,11 +3,13 @@
 /
 /----------------------------------------------------------------------------*/
 #include <avr/io.h>	
-#include "xprintf.h"
 #include <util/delay.h>
-#include "xmega_digital.h"
 #include <avr/interrupt.h>
+/*---------------------------------------------------------------------------*/
 #include "ffft.h"
+#include "pcd8544.h"
+#include "xprintf.h"
+#include "xmega_digital.h"
 /*---------------------------------------------------------------------------*/
 #define lowByte(word) ((uint16_t)word&0x00FF)
 #define highByte(word) (((uint16_t)word&0xFF00)>>8)
@@ -30,6 +32,7 @@ int16_t capture1[FFT_N];
 int16_t capture2[FFT_N];
 complex_t bfly_buff[FFT_N];
 uint16_t spektrum[FFT_N/2];
+volatile uint8_t shift;
 volatile uint8_t acq_done;
 volatile int16_t adc_offset;
 volatile uint16_t capture_index;
@@ -38,16 +41,23 @@ int main()
 {
 	uint8_t i;
 	uint8_t loopCounter = 0;
+
+	shift = 0;
 	
 	init_hardware();	
 
-	_delay_ms(3000);
+	 _delay_ms(4000);
 
-	/* With 20 kHz sampling and 256 point FFT, resolution is ~83 Hz */
+	pcd8544_begin(48);
+	pcd8544_clear();
+	pcd8544_display();
+
+	/* With 10 kHz sampling and 256 point FFT, resolution is ~42 Hz */
 	while(1)
 	{	
+		/* Wait the buffer to be filled */
 		if(acq_done)
-		{
+		{			
 			togglePin(C,6);
 
 			/* Clear the flag */
@@ -57,20 +67,33 @@ int main()
 			fft_input(analyse, bfly_buff);				
 			fft_execute(bfly_buff);		
 			fft_output(bfly_buff, spektrum);	
-
-			/* Send the data to the PC */
-			if((++loopCounter) == 2)
+		
+			/* TODO: Utilize the DMA inside the display method as well */
+			pcd8544_clear();
+			for(i=0;i<LCDWIDTH;i++)
 			{
-				loopCounter = 0;
-
-				/* If we enter this loop, it means that the UART data transfer is slower than the actual work ... */
+				pcd8544_drawLine(LCDWIDTH-i, 0, LCDWIDTH-i, spektrum[i] >> shift, BLACK);
+			}						
+			pcd8544_display();		
+			
+			if(loopCounter++ == 1)
+			{
+				/* If we enter this loop, it means that UART data transfer is slower than the actual work ... */
 				while(dma_ch0_running())
 				{
 					togglePin(C,7);
-				}
+				}			
 
 				/* Transfer the spektrum buffer */			
-				send_uart_dma_ch0((uint8_t*)spektrum,FFT_N);			
+				send_uart_dma_ch0((uint8_t*)spektrum,FFT_N);		
+
+				/* We should have spare time left before next buffer filled. If not, inform that as well ... */
+				if(acq_done)
+				{			
+					togglePin(C,7);			
+				}
+
+				loopCounter = 0;
 			}
 		}
 	}
@@ -87,9 +110,25 @@ void init_hardware()
 
 	/* Onboard LED */
 	pinMode(C,7,OUTPUT);
+	digitalWrite(C,7,HIGH);
 
 	/* Debug pin */
-	pinMode(C,6,OUTPUT);	
+	pinMode(C,6,OUTPUT);
+	digitalWrite(C,6,HIGH);
+
+	/* Button1 */
+	pinMode(C,5,INPUT);
+	setInternalPullup(C,5);
+	PORTC.PIN5CTRL |= PORT_ISC_FALLING_gc;
+
+	/* Button2 */
+	pinMode(C,4,INPUT);
+	setInternalPullup(C,4);
+	PORTC.PIN4CTRL |= PORT_ISC_FALLING_gc;
+
+	/* Enable interrupts at C4, C5 pins */
+	PORTC.INTCTRL = PORT_INTLVL_LO_gc;
+	PORTC.INTMASK = (1<<5) | (1<<4);
 
 	/* Enable the EDMA module */
 	EDMA.CTRL = EDMA_ENABLE_bm;
@@ -104,9 +143,7 @@ void init_hardware()
 
 	/* Enable all interrupt levels */
     PMIC.CTRL = PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
-	sei();
-
-	digitalWrite(C,7,HIGH);
+	sei();	
 }
 /*---------------------------------------------------------------------------*/
 void sendch(uint8_t ch)
@@ -121,7 +158,7 @@ void init_timer()
 	/* For 64 => 500 kHz */ 
 	TCC5.CTRLA = TC45_CLKSEL_DIV64_gc;
 
-	/* 10 kHz sampling rate */
+	/* 500/(49+1) => 10 kHz sampling rate */
 	TCC5.PER = 49;
 
 	/* Connect Timer Overflow signal to Event CH0 */
@@ -140,7 +177,7 @@ void init_adc()
 	ADCA.CTRLB |= (1<<4);
 
 	/* Single ended measurement */
-	ADCA.CH0.CTRL = ADC_CH_INPUTMODE_SINGLEENDED_gc;
+	ADCA.CH0.CTRL = ADC_CH_INPUTMODE_SINGLEENDED_gc;	
 
 	/* Enable the ADC */
 	ADCA.CTRLA = ADC_ENABLE_bm;
@@ -249,8 +286,28 @@ uint16_t findAdcOffset()
 	return val;
 }
 /*---------------------------------------------------------------------------*/
+ISR(PORTC_INT_vect)
+{
+	if(PORTC.INTFLAGS & (1<<5))
+	{
+		if(shift != 7)
+		{	
+			shift++;	
+		}
+		PORTC.INTFLAGS = (1<<5);		
+	}	
+	else if(PORTC.INTFLAGS & (1<<4))
+	{
+		if(shift != 0)
+		{	
+			shift--;	
+		}
+		PORTC.INTFLAGS = (1<<4);
+	}
+}
+/*---------------------------------------------------------------------------*/
 ISR(ADCA_CH0_vect)
-{		
+{	
 	/* Clear the interrupt flag */
 	ADCA.INTFLAGS = ADC_CH0IF_bm;
 

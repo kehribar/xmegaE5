@@ -50,7 +50,7 @@ int main()
 
 		tmp = read_adc(3);
 		xprintf("[3]: %d mV\r\n",tmp);
-		
+			
 		_delay_ms(500);
 	}
 }

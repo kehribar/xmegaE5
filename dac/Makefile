@@ -8,8 +8,8 @@
 PROJECT = main
 
 ### Source files and search directory
-CSRC    = main.c xprintf.c pcd8544.c
-ASRC    = ffft.S
+CSRC    = main.c xprintf.c
+ASRC    =
 VPATH   = 
 DEVICE  = atxmega32e5
 F_OSC   = 32000000
