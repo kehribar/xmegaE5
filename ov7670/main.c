@@ -31,7 +31,7 @@ volatile uint8_t line_index = 0;
 /*---------------------------------------------------------------------------*/
 #define WIDTH_MAX 160
 #define HEIGHT_MAX 120
-volatile uint8_t width_scale = 1; /* minimum: 2 */
+volatile uint8_t width_scale = 2; /* minimum: 2 */
 volatile uint8_t height_scale = 2; /* minimum: 2 */
 /*---------------------------------------------------------------------------*/
 int main()
