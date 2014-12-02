@@ -20,12 +20,19 @@ uint8_t ov7670_get(uint8_t addr);
 uint8_t ov7670_set(uint8_t addr, uint8_t val);
 void send_uart_dma_ch0(uint8_t* buf, uint16_t len);
 /*---------------------------------------------------------------------------*/
-uint8_t linebuffer[64];
+uint8_t linebuffer1[64];
+uint8_t linebuffer2[64];
+uint8_t* linebuffer = linebuffer1;
 /*---------------------------------------------------------------------------*/
 #define dma_ch0_running() (EDMA.CH0.CTRLA & EDMA_CH_ENABLE_bm)
 #define dma_ch2_running() (EDMA.CH2.CTRLA & EDMA_CH_ENABLE_bm)
 /*---------------------------------------------------------------------------*/
 volatile uint8_t line_index = 0;
+/*---------------------------------------------------------------------------*/
+#define WIDTH_MAX 160
+#define HEIGHT_MAX 120
+volatile uint8_t width_scale = 2; /* minimum: 2 */
+volatile uint8_t height_scale = 2; /* minimum: 2 */
 /*---------------------------------------------------------------------------*/
 int main()
 {		
@@ -68,13 +75,13 @@ int main()
     PORTA.PIN7CTRL |= PORT_ISC_FALLING_gc; // rising edge pixel clock
     EVSYS.CH0MUX = EVSYS_CHMUX_PORTA_PIN7_gc;
 
-    TCC4.PER = 1;
-    TCC4.CTRLA = TC45_CLKSEL_EVCH0_gc;  
     TCC4.CCA = 0;
-    EVSYS.CH1MUX = EVSYS_CHMUX_TCC4_CCA_gc;
-
-    /* Output compare enabled for CCA */
     TCC4.CTRLE = (1<<0);
+    TCC4.PER = (2 * width_scale) - 1;
+    TCC4.CTRLA = TC45_CLKSEL_EVCH0_gc;      
+    EVSYS.CH1MUX = EVSYS_CHMUX_TCC4_CCA_gc;    
+
+    /*-----------------------------------------------------------------------*/    
 
     pinMode(R,0,OUTPUT);
     PORTCFG.ACEVOUT = (1<<0) | (1<<3) | (1<<4) | (1<<5);
@@ -89,10 +96,14 @@ int main()
 
     sei(); 
 
+    /*-----------------------------------------------------------------------*/    
+
 	while(1)
 	{	        
-
+        /* Empty main loop ... */
 	}
+
+    /*-----------------------------------------------------------------------*/    
 }
 /*---------------------------------------------------------------------------*/
 ISR(PORTD_INT_vect)
@@ -100,12 +111,12 @@ ISR(PORTD_INT_vect)
     /* End of a single line */
     if(PORTD.INTFLAGS & (1<<1))
     {                  
-        if(line_index == 1)
+        if(line_index == (height_scale -1))
         {                              
             line_index = 0;      
             TCC4.CNT = 0x00;              
             TCC4.CTRLA = TC45_CLKSEL_EVCH0_gc;              
-            store_pixels_dma_ch2(linebuffer,120);            
+            store_pixels_dma_ch2(linebuffer,WIDTH_MAX / width_scale);            
         }
         else
         {
@@ -114,7 +125,7 @@ ISR(PORTD_INT_vect)
                 if(dma_ch0_running() == 0)
                 {
                     digitalWrite(A,3,LOW);
-                    send_uart_dma_ch0(linebuffer,120);  
+                    send_uart_dma_ch0(linebuffer,WIDTH_MAX / width_scale);  
                 }                         
                 else
                 {                    
@@ -133,7 +144,7 @@ ISR(PORTD_INT_vect)
     else if(PORTD.INTFLAGS & (1<<0))
     {
         line_index = 0;      
-        TCC4.CNT = 0x00;             
+        TCC4.CNT = 0x00;   
 
         /* Send preamble for the image data */   
         sendch(0xAA);
@@ -222,12 +233,7 @@ void ov7670_init()
     ov7670_set(REG_COM11, 0x0A);
     ov7670_set(REG_TSLB, 0x04);
     ov7670_set(REG_TSLB, 0x04);
-    // ov7670_set(REG_COM7, 0x04); /* output format: rgb */
-    // ov7670_set(REG_RGB444, 0x00); /* disable RGB444 */
-    // ov7670_set(REG_COM15, 0xD0); /* set RGB565 */
     
-    /* not even sure what all these do, gonna check the oscilloscope and go
-    * from there... */
     ov7670_set(REG_HSTART, 0x16);
     ov7670_set(REG_HSTOP, 0x04);
     ov7670_set(REG_HREF, 0x24);
@@ -238,39 +244,42 @@ void ov7670_init()
     ov7670_set(REG_COM3, 0x04);
     ov7670_set(REG_MVFP, 0x27);
 
-#if 1
-    ov7670_set(REG_COM14, 0x1a); // divide by 4
-    ov7670_set(0x72, 0x22); // downsample by 4    
-    ov7670_set(0x73, 0xf2); // divide by 4
-#else
-    ov7670_set(REG_COM14, 0x1b); // divide by 8
-    ov7670_set(0x72, 0x33); // downsample by 8
-    ov7670_set(0x73, 0xf3); // divide by 8
-#endif
+    #if 1
+        ov7670_set(REG_COM14, 0x1a); // divide by 4
+        ov7670_set(0x72, 0x22); // downsample by 4    
+        ov7670_set(0x73, 0xf2); // divide by 4
+    #else
+        ov7670_set(REG_COM14, 0x1b); // divide by 8
+        ov7670_set(0x72, 0x33); // downsample by 8
+        ov7670_set(0x73, 0xf3); // divide by 8
+    #endif
 
-    // COLOR SETTING
-    ov7670_set(0x4f, 0x80);
-    ov7670_set(0x50, 0x80);
-    ov7670_set(0x51, 0x00);
-    ov7670_set(0x52, 0x22);
-    ov7670_set(0x53, 0x5e);
-    ov7670_set(0x54, 0x80);
-    ov7670_set(0x56, 0x40);
-    ov7670_set(0x58, 0x9e);
-    ov7670_set(0x59, 0x88);
-    ov7670_set(0x5a, 0x88);
-    ov7670_set(0x5b, 0x44);
-    ov7670_set(0x5c, 0x67);
-    ov7670_set(0x5d, 0x49);
-    ov7670_set(0x5e, 0x0e);
-    ov7670_set(0x69, 0x00);
-    ov7670_set(0x6a, 0x40);
-    ov7670_set(0x6b, 0x0a);
-    ov7670_set(0x6c, 0x0a);
-    ov7670_set(0x6d, 0x55);
-    ov7670_set(0x6e, 0x11);
-    ov7670_set(0x6f, 0x9f);
-    ov7670_set(0xb0, 0x84);
+    #if 0
+        // COLOR SETTING
+        ov7670_set(0x4f, 0x80);
+        ov7670_set(0x50, 0x80);
+        ov7670_set(0x51, 0x00);
+        ov7670_set(0x52, 0x22);
+        ov7670_set(0x53, 0x5e);
+        ov7670_set(0x54, 0x80);
+        ov7670_set(0x56, 0x40);
+        ov7670_set(0x58, 0x9e);
+        ov7670_set(0x59, 0x88);
+        ov7670_set(0x5a, 0x88);
+        ov7670_set(0x5b, 0x44);
+        ov7670_set(0x5c, 0x67);
+        ov7670_set(0x5d, 0x49);
+        ov7670_set(0x5e, 0x0e);
+        ov7670_set(0x69, 0x00);
+        ov7670_set(0x6a, 0x40);
+        ov7670_set(0x6b, 0x0a);
+        ov7670_set(0x6c, 0x0a);
+        ov7670_set(0x6d, 0x55);
+        ov7670_set(0x6e, 0x11);
+        ov7670_set(0x6f, 0x9f);
+        ov7670_set(0xb0, 0x84);
+    #endif    
+
 }
 /*---------------------------------------------------------------------------*/
 uint8_t ov7670_set(uint8_t addr, uint8_t val)

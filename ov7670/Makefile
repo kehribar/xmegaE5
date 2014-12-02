@@ -18,7 +18,7 @@ PORT 	= /dev/ttyUSB0
 UPLOAD  = tealoader -p $(PORT) -f ./obj/main.hex -i
 
 ## Use the Atmel's latest GCC toolchain, not the Crosspack or any other version.
-TOOLCHAIN_PATH = /home/parallels/avr8-gnu-toolchain-linux_x86/bin/
+TOOLCHAIN_PATH = /home/kehribar/avr8-gnu-toolchain-linux_x86_64/bin/
 
 ###############################################################################
 #
