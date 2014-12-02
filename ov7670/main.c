@@ -122,15 +122,7 @@ ISR(PORTD_INT_vect)
         {
             if(line_index == 0)
             {
-                if(dma_ch0_running() == 0)
-                {
-                    digitalWrite(A,3,LOW);
-                    send_uart_dma_ch0(linebuffer,WIDTH_MAX / width_scale);  
-                }                         
-                else
-                {                    
-                    digitalWrite(A,3,HIGH);
-                }                     
+                send_uart_dma_ch0(linebuffer,WIDTH_MAX / width_scale);                    
             } 
 
             line_index++;            
