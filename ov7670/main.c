@@ -31,7 +31,7 @@ volatile uint8_t line_index = 0;
 /*---------------------------------------------------------------------------*/
 #define WIDTH_MAX 160
 #define HEIGHT_MAX 120
-volatile uint8_t width_scale = 2; /* minimum: 2 */
+volatile uint8_t width_scale = 1; /* minimum: 2 */
 volatile uint8_t height_scale = 2; /* minimum: 2 */
 /*---------------------------------------------------------------------------*/
 int main()
@@ -192,12 +192,13 @@ void init_uart()
 	USARTD0.CTRLB = USART_RXEN_bm|USART_TXEN_bm;
 	USARTD0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc|USART_PMODE_DISABLED_gc|USART_CHSIZE_8BIT_gc;
 
-    #if 0
-        /* 115200 baud rate with 32MHz clock */
-        USARTD0.BAUDCTRLA = 131; USARTD0.BAUDCTRLB = (-3 << USART_BSCALE_gp);
+    #if 1
+        USARTD0.CTRLB |= (1<<2); /* CLK2X */
+        
+        /* 3000000 baud rate with 32MHz clock */
+        USARTD0.BAUDCTRLA = 43; USARTD0.BAUDCTRLB = (-7 << USART_BSCALE_gp);        
     #else
-        /* 230400 baud rate with 32MHz clock */
-        // USARTD0.BAUDCTRLA = 123; USARTD0.BAUDCTRLB = (-4 << USART_BSCALE_gp);       
+        /* 2000000 baud rate with 32MHz clock */        
         USARTD0.BAUDCTRLA = 0x00; USARTD0.BAUDCTRLB = 0x00;
     #endif
 
