@@ -4,6 +4,7 @@
 /----------------------------------------------------------------------------*/
 #include <avr/io.h>	
 #include <string.h>
+#include <avr/eeprom.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
 #include "wi07.h"
@@ -17,6 +18,9 @@ volatile uint8_t BufferData[1024];
 /*---------------------------------------------------------------------------*/
 uint8_t SSID_name[64];
 uint8_t SSID_pass[64];
+/*---------------------------------------------------------------------------*/
+uint8_t* SSID_name_addr = (uint8_t*)64; /* EEPROM base address */
+uint8_t* SSID_pass_addr = (uint8_t*)128; /* EEPROM base address */
 /*---------------------------------------------------------------------------*/
 uint8_t tmpBuffer[256];
 /*---------------------------------------------------------------------------*/

@@ -6,93 +6,87 @@
 /*---------------------------------------------------------------------------*/
 void init_adc();
 void init_uart();
+void init_hardware();
 void fail_if_not_ok();
 void initClock_32Mhz();
 void sendch(uint8_t ch);
 uint16_t read_adc(uint8_t ch);
 /*---------------------------------------------------------------------------*/
+void client_mode();
+void server_mode();
+/*---------------------------------------------------------------------------*/
 int main()
 {
-	initClock_32Mhz();
-	init_uart();
-	init_adc();
-
-	RingBuffer_InitBuffer(&Buffer, BufferData, sizeof(BufferData));
-
-	/* Software PWM timer */	 
-    TCC4.CTRLA = TC45_CLKSEL_DIV256_gc; /* 32Mhz / 256 => 125 kHz */
-    TCC4.PER = 9; /* 125 kHz / (9+1) => 12.5 kHz */
-    TCC4.INTCTRLA = 0x01; /* Overflow interrupt level */
-
-	/* Wifi module reset / control pins */
-	pinMode(C,4,OUTPUT);
-	digitalWrite(C,4,HIGH);
-	
-	pinMode(C,5,OUTPUT);
-	digitalWrite(C,5,HIGH);
-
-	/* Onboard LEDs */
-	pinMode(C,7,OUTPUT);
-	pinMode(C,6,OUTPUT);
-
-	/* Button 0 */
-	pinMode(D,3,INPUT);
-	setInternalPullup(D,3);
-
-	/* RGB LED */
-	pinMode(D,0,OUTPUT);
-	pinMode(D,1,OUTPUT);
-	pinMode(D,2,OUTPUT);
+	init_hardware();	
 		
 	set_rgb(255,0,0);	
 
-	xsprintf(SSID_name,"name");
-	xsprintf(SSID_pass,"pass");
-	
 	/* Wait for the powerup */
 	wait_for_message("ready\r\n",10000);
 
 	/* Enter AP mode for configuration */
 	if(digitalRead(D,3) == LOW)
 	{
-		xprintf("AT+CWMODE=2\r\n");
-		check_ok();
-
-		xprintf("AT+RST\r\n");
-		check_ok();
-
-		/* Wait for the powerup */
-		wait_for_message("ready\r\n",10000);
-
-		/* SSID details ... */
-		xprintf("AT+CWSAP=\"small_device\",\"password\",5,3\r\n");
-
-		/* Check the result of join */
-		fail_if_not_ok();
-
-		set_rgb(255,0,255);
+		server_mode();
 	}
 	else
 	{
-		xprintf("AT+CWMODE=1\r\n");
-		check_ok();
+		client_mode();
+	}	
 
-		xprintf("AT+RST\r\n");
-		check_ok();
+	return 0;
+}
+/*---------------------------------------------------------------------------*/
+void client_mode()
+{
+	/* Read the SSID settings */
+	eeprom_read_block(SSID_name,SSID_name_addr,32);
+	eeprom_read_block(SSID_pass,SSID_pass_addr,32);
 
-		/* Wait for the powerup */
-		wait_for_message("ready\r\n",10000);
-	
-		/* SSID details ... */
-		xprintf("AT+CWJAP=\"");
-		xprintf("%s\",\"",SSID_name);
-		xprintf("%s\"\r\n",SSID_pass);
+	xprintf("AT+CWMODE=1\r\n");
+	check_ok();
 
-		/* Check the result of join */
-		fail_if_not_ok();
+	xprintf("AT+RST\r\n");
+	check_ok();
 
-		set_rgb(255,255,0);
+	/* Wait for the powerup */
+	wait_for_message("ready\r\n",10000);
+
+	/* SSID details ... */
+	xprintf("AT+CWJAP=\"");
+	xprintf("%s\",\"",SSID_name);
+	xprintf("%s\"\r\n",SSID_pass);
+
+	/* Check the result of join */
+	fail_if_not_ok();
+
+	set_rgb(0,255,0);
+
+	while(1)
+	{
+		// fill this
 	}
+}
+/*---------------------------------------------------------------------------*/
+void server_mode()
+{
+	uint16_t len;
+	uint8_t ind = 0;
+
+	xprintf("AT+CWMODE=2\r\n");
+	check_ok();
+
+	xprintf("AT+RST\r\n");
+	check_ok();
+
+	/* Wait for the powerup */
+	wait_for_message("ready\r\n",10000);
+
+	/* SSID details ... */
+	xprintf("AT+CWSAP=\"small_device\",\"password\",5,3\r\n");
+
+	/* Check the result of join */
+	fail_if_not_ok();	
 
 	/* Wait until system get IP */
 	do
@@ -108,10 +102,9 @@ int main()
 	
 	/* Enable server at port 80 */
 	xprintf("AT+CIPSERVER=1,80\r\n");
-	fail_if_not_ok();		
+	fail_if_not_ok();	
 
-	uint16_t len;
-	uint8_t ind = 0;	
+	set_rgb(0,0,255);
 
 	while(1)
 	{
@@ -132,6 +125,8 @@ int main()
 
 				SSID_name[ind] = '\0';
 
+				eeprom_update_block(SSID_name,SSID_name_addr,32);
+
 				xsprintf(tmpBuffer,"> SSID name set: %s\r\n",SSID_name);
 
 				send_TCPData(tmpBuffer,strlen(tmpBuffer));
@@ -148,6 +143,8 @@ int main()
 				}
 
 				SSID_name[ind-1] = '\0';
+				
+				eeprom_update_block(SSID_pass,SSID_pass_addr,32);
 
 				xsprintf(tmpBuffer,"> SSID pass set: %s\r\n",SSID_pass);
 
@@ -306,5 +303,39 @@ uint16_t read_adc(uint8_t ch)
 	
 	/* Return the result */
 	return ADCA.CH0.RES;
+}
+/*---------------------------------------------------------------------------*/
+void init_hardware()
+{
+	initClock_32Mhz();
+	init_uart();
+	init_adc();
+
+	RingBuffer_InitBuffer(&Buffer, BufferData, sizeof(BufferData));
+
+	/* Software PWM timer */	 
+    TCC4.CTRLA = TC45_CLKSEL_DIV256_gc; /* 32Mhz / 256 => 125 kHz */
+    TCC4.PER = 9; /* 125 kHz / (9+1) => 12.5 kHz */
+    TCC4.INTCTRLA = 0x01; /* Overflow interrupt level */
+
+	/* Wifi module reset & control pins */
+	pinMode(C,4,OUTPUT);
+	digitalWrite(C,4,HIGH);
+	
+	pinMode(C,5,OUTPUT);
+	digitalWrite(C,5,HIGH);
+
+	/* Onboard LEDs */
+	pinMode(C,7,OUTPUT);
+	pinMode(C,6,OUTPUT);
+
+	/* Button 0 */
+	pinMode(D,3,INPUT);
+	setInternalPullup(D,3);
+
+	/* RGB LED */
+	pinMode(D,0,OUTPUT);
+	pinMode(D,1,OUTPUT);
+	pinMode(D,2,OUTPUT);
 }
 /*---------------------------------------------------------------------------*/
