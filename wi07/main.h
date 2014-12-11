@@ -16,13 +16,22 @@ RingBuffer_t Buffer;
 uint8_t tcpData[512];
 volatile uint8_t BufferData[1024];
 /*---------------------------------------------------------------------------*/
-uint8_t SSID_name[64];
-uint8_t SSID_pass[64];
+uint8_t SSID_name[32];
+uint8_t SSID_pass[32];
+uint8_t PublicKey[32];
+uint8_t PrivateKey[32];
 /*---------------------------------------------------------------------------*/
-uint8_t* SSID_name_addr = (uint8_t*)64; /* EEPROM base address */
-uint8_t* SSID_pass_addr = (uint8_t*)128; /* EEPROM base address */
+uint8_t* SSID_name_addr = (uint8_t*)32; /* EEPROM base address */
+uint8_t* SSID_pass_addr = (uint8_t*)64; /* EEPROM base address */
+uint8_t* PublicKey_addr = (uint8_t*)96; /* EEPROM base address */
+uint8_t* PrivateKey_addr = (uint8_t*)128; /* EEPROM base address */
 /*---------------------------------------------------------------------------*/
 uint8_t tmpBuffer[256];
+/*---------------------------------------------------------------------------*/
+int32_t totalSum = 0;
+int16_t movingBuffer[8];
+uint8_t filterStable = 0;
+uint16_t movingIndex = 0;
 /*---------------------------------------------------------------------------*/
 volatile uint8_t r = 0;
 volatile uint8_t g = 0;

@@ -22,7 +22,7 @@ int main()
 	set_rgb(255,0,0);	
 
 	/* Wait for the powerup */
-	wait_for_message("ready\r\n",10000);
+	wait_for_message("com]\r\n",10000);
 
 	/* Enter AP mode for configuration */
 	if(digitalRead(D,3) == LOW)
@@ -39,9 +39,12 @@ int main()
 /*---------------------------------------------------------------------------*/
 void client_mode()
 {
+	test:
 	/* Read the SSID settings */
 	eeprom_read_block(SSID_name,SSID_name_addr,32);
 	eeprom_read_block(SSID_pass,SSID_pass_addr,32);
+	eeprom_read_block(PublicKey,PublicKey_addr,32);
+	eeprom_read_block(PrivateKey,PrivateKey_addr,32);
 
 	xprintf("AT+CWMODE=1\r\n");
 	check_ok();
@@ -50,7 +53,7 @@ void client_mode()
 	check_ok();
 
 	/* Wait for the powerup */
-	wait_for_message("ready\r\n",10000);
+	wait_for_message("com]\r\n",10000);
 
 	/* SSID details ... */
 	xprintf("AT+CWJAP=\"");
@@ -60,11 +63,78 @@ void client_mode()
 	/* Check the result of join */
 	fail_if_not_ok();
 
-	set_rgb(0,255,0);
+	/* Wait until system get IP */
+	do
+	{
+		xprintf("AT+CIFSR\r\n");
+		_delay_ms(100);	
+	}
+	while(check_error() == 0);	
+
+	/* ... */
+	xprintf("AT+CIPMUX=1\r\n");
+	fail_if_not_ok();	
 
 	while(1)
 	{
-		// fill this
+		set_rgb(255,255,255);
+
+		xprintf("AT+CIPSTART=0,\"TCP\",\"data.sparkfun.com\",80\r\n");
+		if(check_ok())
+		{
+			/* ...... */
+			goto test;
+		}
+
+		wait_for_message("Linked\r\n",10000);	
+
+		/*---------------------------------------------------------------------------------*/		
+		/* In place average */
+		/*---------------------------------------------------------------------------------*/
+		int32_t temp;
+		uint8_t i = 1;
+		while(i++)
+		{
+			temp += read_adc(1);
+		}
+		temp >>= 8;
+		temp -= 500; /* temperature sensor have some offset for 0 celcius */
+		/*---------------------------------------------------------------------------------*/
+
+		/*---------------------------------------------------------------------------------*/		
+		/* Moving average */
+		/*---------------------------------------------------------------------------------*/
+		totalSum = totalSum + temp - movingBuffer[movingIndex];
+		movingBuffer[movingIndex] = temp;
+		movingIndex++;
+		if(movingIndex == 8)
+		{			
+			movingIndex = 0;
+			filterStable = 1;
+		}
+		if(filterStable)
+		{
+			temp = totalSum >> 3;
+		}		
+		/*---------------------------------------------------------------------------------*/
+
+		int16_t integer = temp / 10;
+		int16_t decimal = temp - (10 * integer);
+
+		xsprintf(tmpBuffer,"GET /input/%s?private_key=%s&temp=%d.%d HTTP/1.1\r\nUser-Agent: curl/7.37.1\r\nHost: data.sparkfun.com\r\nAccept: */*\r\n\r\n",
+			PublicKey,PrivateKey,integer,decimal);
+
+		send_TCPData(tmpBuffer,strlen(tmpBuffer));
+
+		wait_for_message("+IPD",50000);
+
+		_delay_ms(100);
+
+		xprintf("AT+CIPCLOSE=0\r\n");
+		wait_for_message("Unlink\r\n",10000);
+
+		set_rgb(0,255,0);
+		_delay_ms(40000);
 	}
 }
 /*---------------------------------------------------------------------------*/
@@ -80,13 +150,13 @@ void server_mode()
 	check_ok();
 
 	/* Wait for the powerup */
-	wait_for_message("ready\r\n",10000);
+	wait_for_message("com]\r\n",10000);
 
 	/* SSID details ... */
-	xprintf("AT+CWSAP=\"small_device\",\"password\",5,3\r\n");
+	xprintf("AT+CWSAP=\"myssid\",\"123456789\",1,0\r\n");
 
 	/* Check the result of join */
-	fail_if_not_ok();	
+	fail_if_not_ok();
 
 	/* Wait until system get IP */
 	do
@@ -142,7 +212,7 @@ void server_mode()
 					ind++;				
 				}
 
-				SSID_name[ind-1] = '\0';
+				SSID_pass[ind] = '\0';
 				
 				eeprom_update_block(SSID_pass,SSID_pass_addr,32);
 
@@ -152,13 +222,51 @@ void server_mode()
 				
 				break;
 			}	
-			/* Get temperature */
+			/* Get ADC reading */
 			case 't':
 			{
-				xsprintf(tmpBuffer,"> Temperature: %d\r\n",read_adc(1));
+				xsprintf(tmpBuffer,"> Raw adc: %d mV\r\n",read_adc(1));
 				
 				send_TCPData(tmpBuffer,strlen(tmpBuffer));
 				
+				break;
+			}
+			/* Set data.sparkfun.com Public Key */
+			case 'x':
+			{
+				while(tcpData[ind+2] != '\r')
+				{
+					PublicKey[ind] = tcpData[ind+2];
+					ind++;				
+				}
+
+				PublicKey[ind] = '\0';
+				
+				eeprom_update_block(PublicKey,PublicKey_addr,32);
+
+				xsprintf(tmpBuffer,"> PublicKey set: %s\r\n",PublicKey);
+
+				send_TCPData(tmpBuffer,strlen(tmpBuffer));
+
+				break;
+			}
+			/* Set data.sparkfun.com Private Key */
+			case 'y':
+			{
+				while(tcpData[ind+2] != '\r')
+				{
+					PrivateKey[ind] = tcpData[ind+2];
+					ind++;				
+				}
+
+				PrivateKey[ind] = '\0';
+				
+				eeprom_update_block(PrivateKey,PrivateKey_addr,32);
+
+				xsprintf(tmpBuffer,"> PrivateKey set: %s\r\n",PrivateKey);
+
+				send_TCPData(tmpBuffer,strlen(tmpBuffer));
+
 				break;
 			}
 			/* Unknown command */
@@ -286,6 +394,8 @@ void init_adc()
 
 	/* Single ended measurement */
 	ADCA.CH0.CTRL = ADC_CH_INPUTMODE_SINGLEENDED_gc;
+
+	ADCA.CH0.AVGCTRL = ADC_SAMPNUM_8X_gc | (3 << 4);
 
 	/* Enable the ADC */
 	ADCA.CTRLA = ADC_ENABLE_bm;

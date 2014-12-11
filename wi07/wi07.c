@@ -18,7 +18,7 @@ int8_t wait_for_message(const char* checkmsg,uint32_t timeoutLimit)
 			if(timeoutLimit != 0)
 			{
 				timeout++;
-				_delay_us(250);
+				_delay_us(750);
 				if(timeout > timeoutLimit) { return -1; }
 			}
 		}	
@@ -34,7 +34,7 @@ int8_t wait_for_message(const char* checkmsg,uint32_t timeoutLimit)
 			if(timeoutLimit != 0)
 			{
 				timeout++;
-				_delay_us(250);
+				_delay_us(750);
 				if(timeout > timeoutLimit) { return -1; }
 			}
 		}
@@ -61,7 +61,7 @@ int8_t check_ok()
 		while(RingBuffer_GetCount(&Buffer) == 0)
 		{
 			timeout++;
-			_delay_us(250);
+			_delay_us(750);
 			if(timeout > 10000) { return -1; }			
 		}			
 
@@ -74,7 +74,7 @@ int8_t check_ok()
 		else
 		{
 			timeout++;
-			_delay_us(250);
+			_delay_us(750);
 			if(timeout > 10000) { return -1; }
 		}
 
