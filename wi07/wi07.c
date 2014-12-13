@@ -251,3 +251,27 @@ uint16_t StrTo16Uint(char * str)
 	return ret;
 }
 /*---------------------------------------------------------------------------*/
+// fill a binary string of len data into the tcp packet
+// taken from tuxgraphics ip stack
+uint16_t fill_tcp_data_len(uint8_t *buf,uint16_t pos, const uint8_t *s, uint8_t len)
+{
+        // fill in tcp data at position pos
+        while (len) 
+        {
+                buf[pos]=*s;
+                pos++;
+                s++;
+                len--;
+        }
+        return(pos);
+}
+/*---------------------------------------------------------------------------*/
+// fill in tcp data at position pos. pos=0 means start of
+// tcp data. Returns the position at which the string after
+// this string could be filled.
+// taken from tuxgraphics ip stack
+uint16_t fill_tcp_data(uint8_t *buf,uint16_t pos, const char *s)
+{
+        return(fill_tcp_data_len(buf,pos,(uint8_t*)s,strlen(s)));
+}
+/*---------------------------------------------------------------------------*/
