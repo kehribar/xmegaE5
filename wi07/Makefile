@@ -8,14 +8,14 @@
 PROJECT = main
 
 ### Source files and search directory
-CSRC    = main.c xprintf.c wi07.c
+CSRC    = main.c xprintf.c wi07.c hardwareLayer.c
 ASRC    =
 VPATH   = 
 DEVICE  = atxmega32e5
 F_OSC   = 32000000
 FLASH   = sudo avrdude -c avrispmkii -p x32e5 -U flash:w:./obj/main.hex
 PORT 	= /dev/ttyUSB0
-UPLOAD  = tealoader -p $(PORT) -f ./obj/main.hex -i
+UPLOAD  = sudo tealoader -p $(PORT) -f ./obj/main.hex -i
 
 ## Use the Atmel's latest GCC toolchain, not the Crosspack or any other version.
 TOOLCHAIN_PATH = /home/kehribar/avr8-gnu-toolchain-linux_x86_64/bin/

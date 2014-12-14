@@ -3,9 +3,10 @@
 /
 /----------------------------------------------------------------------------*/
 #include <stdint.h>
+#include "xprintf.h"
 #include "ringBuffer.h"
 #include <util/delay.h>
-#include "xprintf.h"
+#include <avr/eeprom.h>
 /*---------------------------------------------------------------------------*/
 extern RingBuffer_t Buffer;
 extern uint8_t tcpData[512];
@@ -22,6 +23,8 @@ int8_t check_busy();
 /*---------------------------------------------------------------------------*/
 uint16_t getMessageLength();
 /*---------------------------------------------------------------------------*/
+void fail_if_not_ok();
+/*---------------------------------------------------------------------------*/
 void send_TCPData(uint8_t* msg,uint8_t len);
 /*---------------------------------------------------------------------------*/
 uint16_t waitTCPMessage_blocking();
@@ -31,4 +34,10 @@ uint16_t StrTo16Uint(char * str);
 uint16_t fill_tcp_data_len(uint8_t *buf,uint16_t pos, const uint8_t *s, uint8_t len);
 /*---------------------------------------------------------------------------*/
 uint16_t fill_tcp_data(uint8_t *buf,uint16_t pos, const char *s);
+/*---------------------------------------------------------------------------*/
+uint16_t parseTCP_setAndResponse(const char* name, uint8_t* eepromBaseAddr, uint8_t* ramBuffer, uint8_t maxLen,uint16_t tcpLen,uint8_t* respBuff);
+/*---------------------------------------------------------------------------*/
+uint16_t create_GetRequest(const uint8_t* urlBase, uint8_t* urlSuffix, uint8_t* respBuff, uint16_t tcpLen);
+/*---------------------------------------------------------------------------*/
+void wait_until_gotIP();
 /*---------------------------------------------------------------------------*/

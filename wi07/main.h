@@ -11,9 +11,12 @@
 #include "xprintf.h"
 #include "ringBuffer.h"
 #include "xmega_digital.h"
+#include "hardwareLayer.h"
 /*---------------------------------------------------------------------------*/
 RingBuffer_t Buffer;
 uint8_t tcpData[512];
+uint8_t txBuffer[256];
+uint8_t smallBuffer[128];
 volatile uint8_t BufferData[1024];
 /*---------------------------------------------------------------------------*/
 uint8_t SSID_name[32];
@@ -26,18 +29,8 @@ uint8_t* SSID_pass_addr = (uint8_t*)64; /* EEPROM base address */
 uint8_t* PublicKey_addr = (uint8_t*)96; /* EEPROM base address */
 uint8_t* PrivateKey_addr = (uint8_t*)128; /* EEPROM base address */
 /*---------------------------------------------------------------------------*/
-uint8_t tmpBuffer[256];
-/*---------------------------------------------------------------------------*/
 int32_t totalSum = 0;
 int16_t movingBuffer[8];
+uint8_t movingIndex = 0;
 uint8_t filterStable = 0;
-uint16_t movingIndex = 0;
-/*---------------------------------------------------------------------------*/
-volatile uint8_t r = 0;
-volatile uint8_t g = 0;
-volatile uint8_t b = 0;
-volatile uint8_t r_counter = 0;
-volatile uint8_t g_counter = 0;
-volatile uint8_t b_counter = 0;
-#define set_rgb(rval,gval,bval) {r=rval; g=gval; b=bval;}
 /*---------------------------------------------------------------------------*/
