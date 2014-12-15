@@ -147,6 +147,13 @@ void client_mode()
 
     send_TCPData(txBuffer,tcp_len);
 
+    /* Wait for some time for if we get some response */
+    _delay_ms(500);
+
+    /* close the socket */
+    xprintf("AT+CIPCLOSE=0\r\n");
+    fail_if_not_ok();
+
     wait_for_message("Unlink\r\n",10000);
 
     /* Wait some time for next data */
