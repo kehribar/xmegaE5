@@ -16,8 +16,8 @@ uint16_t read_adc(uint8_t ch);
 void sendch_module(uint8_t ch);
 /*---------------------------------------------------------------------------*/
 int main()
-{
-  init_hardware();  
+{  
+  init_hardware();    
     
   set_rgb(255,0,0); 
 

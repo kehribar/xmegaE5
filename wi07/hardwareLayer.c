@@ -27,8 +27,10 @@ void init_hardware()
   digitalWrite(C,5,HIGH);
 
   /* Onboard LEDs */
-  pinMode(C,7,OUTPUT);
-  pinMode(C,6,OUTPUT);
+  pinMode(C,0,OUTPUT); // CS
+  pinMode(C,1,OUTPUT); // CLK
+  pinMode(C,6,INPUT); // SO
+  pinMode(C,7,OUTPUT); // SI
 
   /* Button 0 */
   pinMode(D,3,INPUT);

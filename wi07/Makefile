@@ -8,7 +8,7 @@
 PROJECT = main
 
 ### Source files and search directory
-CSRC    = main.c xprintf.c wi07.c hardwareLayer.c
+CSRC    = main.c xprintf.c wi07.c hardwareLayer.c spiFlash.c
 ASRC    =
 VPATH   = 
 DEVICE  = atxmega32e5

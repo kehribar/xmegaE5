@@ -12,6 +12,7 @@
 #include "ringBuffer.h"
 #include "xmega_digital.h"
 #include "hardwareLayer.h"
+#include "spiFlash.h"
 /*---------------------------------------------------------------------------*/
 RingBuffer_t Buffer;
 uint8_t tcpData[512];
